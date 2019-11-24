@@ -42,7 +42,7 @@ echo "Using maven command: ${MAVEN_CMD}"
 echo "Using maven extra opts: ${MAVEN_EXTRA_OPTS}"
 
 mvn_install() {
-    ${MAVEN_CMD} --no-snapshot-updates clean install ${MAVEN_EXTRA_OPTS} "$@"
+    ${MAVEN_CMD} --no-snapshot-updates clean deploy -DaltDeploymentRepository=local-vespa-repo::default::file://$HOME/vespa-maven-repo ${MAVEN_EXTRA_OPTS} "$@"
 }
 
 # Generate vtag map

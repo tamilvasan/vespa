@@ -31,7 +31,17 @@ public:
 
     void initRange(uint32_t begin_id, uint32_t end_id) override {
         SearchIterator::initRange(begin_id, end_id);
-        _idx = 0;
+        uint32_t lo = 0;
+        uint32_t hi = _hits.size();
+        while (lo < hi) {
+            uint32_t mid = (lo + hi) / 2;
+            if (_hits[mid].docid < begin_id) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        _idx = lo;
     }
 
     void doSeek(uint32_t docId) override {

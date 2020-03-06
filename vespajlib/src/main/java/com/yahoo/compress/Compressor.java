@@ -146,12 +146,10 @@ public class Compressor {
     public byte[] compressUnconditionally(byte[] input) {
         return getCompressor().compress(input);
     }
-
-    public byte [] decompressUnconditionally(byte[] input, int srcOffset, int uncompressedLen) {
+    public void decompressUnconditionally(byte[] input, byte[] output) {
         if (input.length > 0) {
-            return factory.fastDecompressor().decompress(input, srcOffset, uncompressedLen);
+            factory.safeDecompressor().decompress(input, output);
         }
-        return new byte[0];
     }
 
     public long warmup(double seconds) {

@@ -60,7 +60,8 @@ public class Payload {
     public Payload withCompression(CompressionType requestedCompression) {
         CompressionType responseCompression = compressionInfo.getCompressionType();
         if (requestedCompression == CompressionType.UNCOMPRESSED && responseCompression == CompressionType.LZ4) {
-            byte[] buffer = compressor.decompress(data.getBytes(), compressionInfo.getUncompressedSize());
+            byte[] buffer = new byte[compressionInfo.getUncompressedSize()];
+            compressor.decompress(data.getBytes(), buffer);
             Utf8Array data = new Utf8Array(buffer);
             CompressionInfo info = CompressionInfo.create(CompressionType.UNCOMPRESSED, compressionInfo.getUncompressedSize());
             return Payload.from(data, info);

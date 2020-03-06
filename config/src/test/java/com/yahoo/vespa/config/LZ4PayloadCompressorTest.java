@@ -23,7 +23,8 @@ public class LZ4PayloadCompressorTest {
         LZ4PayloadCompressor compressor = new LZ4PayloadCompressor();
         byte[] data = Utf8.toBytes(input);
         byte[] compressed = compressor.compress(data);
-        byte[] output = compressor.decompress(compressed, data.length);
+        byte[] output = new byte[data.length];
+        compressor.decompress(compressed, output);
         assertThat(data, is(output));
     }
 }

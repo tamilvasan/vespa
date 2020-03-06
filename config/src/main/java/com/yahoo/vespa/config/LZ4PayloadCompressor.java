@@ -26,8 +26,8 @@ public class LZ4PayloadCompressor {
         return compressor.compressUnconditionally(input);
     }
 
-    public byte [] decompress(byte[] input, int uncompressedLen) {
-        return compressor.decompressUnconditionally(input, 0, uncompressedLen);
+    public void decompress(byte[] input, byte[] output) {
+        compressor.decompressUnconditionally(input, output);
     }
 
 }

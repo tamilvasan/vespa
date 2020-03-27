@@ -5,6 +5,9 @@
 #include <vespa/eval/eval/value.h>
 #include <vespa/eval/tensor/tensor.h>
 
+#include <vespa/log/log.h>
+LOG_SETUP(".eval.tensor.dense.dense_tensor_peek_function");
+
 namespace vespalib::tensor {
 
 using eval::Value;
@@ -30,7 +33,10 @@ void my_tensor_peek_op(eval::InterpretedFunction::State &state, uint64_t param) 
         } else {
             size_t dim_idx(round(state.peek(0).as_double()));
             state.stack.pop_back();
-            valid &= (dim_idx < dim.second);
+            if (dim_idx >= dim.second) {
+                valid = false;
+                LOG(warning, "dimension index out of bounds: %zu (dimension size: %zu)", dim_idx, dim.second);
+            }
             idx += (dim_idx * factor);
         }
         factor *= dim.second;

@@ -24,16 +24,47 @@ TransLogServerApp::TransLogServerApp(const config::ConfigUri & tlsConfigUri,
 
 namespace {
 
-DomainPart::Crc
+Encoding::Crc
 getCrc(searchlib::TranslogserverConfig::Crcmethod crcType)
 {
     switch (crcType) {
         case searchlib::TranslogserverConfig::Crcmethod::ccitt_crc32:
-            return DomainPart::ccitt_crc32;
+            return Encoding::Crc::ccitt_crc32;
         case searchlib::TranslogserverConfig::Crcmethod::xxh64:
-            return DomainPart::xxh64;
+            return Encoding::Crc ::xxh64;
     }
-    LOG_ABORT("should not be reached");
+    assert(false);
+}
+
+Encoding::Compression
+getCompression(searchlib::TranslogserverConfig::Compression::Type type)
+{
+    switch (type) {
+        case searchlib::TranslogserverConfig::Compression::Type::NONE:
+            return Encoding::Compression::none;
+        case searchlib::TranslogserverConfig::Compression::Type::LZ4:
+            return Encoding::Compression::lz4;
+        case searchlib::TranslogserverConfig::Compression::Type::ZSTD:
+            return Encoding::Compression::zstd;
+    }
+    assert(false);
+}
+
+Encoding
+getEncoding(const searchlib::TranslogserverConfig & cfg)
+{
+    return Encoding(getCrc(cfg.crcmethod), getCompression(cfg.compression.type));
+}
+
+DomainConfig
+getDomainConfig(const searchlib::TranslogserverConfig & cfg) {
+    DomainConfig dcfg;
+    dcfg.setEncoding(getEncoding(cfg))
+        .setCompressionLevel(cfg.compression.level)
+        .setPartSizeLimit(cfg.filesizemax)
+        .setChunkSizeLimit(cfg.chunk.sizelimit)
+        .setChunkAgeLimit(std::chrono::microseconds(int64_t(cfg.chunk.agelimit*1000000)));
+    return dcfg;
 }
 
 }
@@ -41,11 +72,10 @@ getCrc(searchlib::TranslogserverConfig::Crcmethod crcType)
 void
 TransLogServerApp::start()
 {
-    std::shared_ptr<searchlib::TranslogserverConfig> c = _tlsConfig.get();
-    auto tls = std::make_shared<TransLogServer>(c->servername, c->listenport, c->basedir, _fileHeaderContext,
-                                            c->filesizemax, c->maxthreads, getCrc(c->crcmethod));
     std::lock_guard<std::mutex> guard(_lock);
-    _tls = std::move(tls);
+    auto c = _tlsConfig.get();
+   _tls = std::make_shared<TransLogServer>(c->servername, c->listenport, c->basedir, _fileHeaderContext,
+                                            getDomainConfig(*c), c->maxthreads);
 }
 
 TransLogServerApp::~TransLogServerApp()
@@ -57,8 +87,12 @@ void
 TransLogServerApp::configure(std::unique_ptr<searchlib::TranslogserverConfig> cfg)
 {
     LOG(config, "configure Transaction Log Server %s at port %d", cfg->servername.c_str(), cfg->listenport);
+    std::lock_guard<std::mutex> guard(_lock);
     _tlsConfig.set(cfg.release());
     _tlsConfig.latch();
+    if (_tls) {
+        _tls->setDomainConfig(getDomainConfig(*cfg));
+    }
 }
 
 TransLogServer::SP

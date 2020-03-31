@@ -15,10 +15,10 @@ using vespalib::compression::CompressionConfig;
 namespace search::transactionlog {
 
 Encoding::Encoding(Crc crc, Compression compression)
-    : _raw(crc | (compression >> 2))
+    : _raw(crc | (compression << 4))
 {
     assert(crc <= Crc::xxh64);
-    assert(compression <= Compression::lz4);
+    assert(compression <= Compression::zstd);
 }
 
 IChunk::~IChunk() = default;

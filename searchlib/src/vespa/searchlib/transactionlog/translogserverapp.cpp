@@ -89,10 +89,11 @@ TransLogServerApp::configure(std::unique_ptr<searchlib::TranslogserverConfig> cf
 {
     LOG(config, "configure Transaction Log Server %s at port %d", cfg->servername.c_str(), cfg->listenport);
     std::lock_guard<std::mutex> guard(_lock);
+    DomainConfig domainConfig = getDomainConfig(*cfg);
     _tlsConfig.set(cfg.release());
     _tlsConfig.latch();
     if (_tls) {
-        _tls->setDomainConfig(getDomainConfig(*cfg));
+        _tls->setDomainConfig(domainConfig);
     }
 }
 

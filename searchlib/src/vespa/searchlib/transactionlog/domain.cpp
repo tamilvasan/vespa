@@ -4,11 +4,14 @@
 #include <vespa/vespalib/util/stringfmt.h>
 #include <vespa/vespalib/util/closuretask.h>
 #include <vespa/vespalib/io/fileutil.h>
+#include <vespa/vespalib/util/lambdatask.h>
 #include <vespa/fastos/file.h>
 #include <algorithm>
 #include <thread>
 
 #include <vespa/log/log.h>
+#include <vespa/vespalib/util/threadstackexecutor.h>
+
 LOG_SETUP(".transactionlog.domain");
 
 using vespalib::string;
@@ -24,6 +27,8 @@ using std::make_shared;
 
 namespace search::transactionlog {
 
+VESPA_THREAD_STACK_TAG(domain_commit_executor);
+
 DomainConfig::DomainConfig()
     : _encoding(Encoding::Crc::xxh64, Encoding::Compression::none),
       _compressionLevel(9),
@@ -31,6 +36,7 @@ DomainConfig::DomainConfig()
       _chunkSizeLimit(0x40000),   // 256k
       _chunkAgeLimit(10ms)
 { }
+
 Domain::Domain(const string &domainName, const string & baseDir, FastOS_ThreadPool & threadPool,
                Executor & commitExecutor, Executor & sessionExecutor, const DomainConfig & cfg,
                const FileHeaderContext &fileHeaderContext)
@@ -38,6 +44,7 @@ Domain::Domain(const string &domainName, const string & baseDir, FastOS_ThreadPo
       _currentChunk(std::make_unique<Chunk>()),
       _lastSerial(0),
       _threadPool(threadPool),
+      _singleCommiter(std::make_unique<vespalib::ThreadStackExecutor>(1, 128*1024)),
       _commitExecutor(commitExecutor),
       _sessionExecutor(sessionExecutor),
       _sessionId(1),
@@ -145,6 +152,7 @@ Domain::~Domain() {
         }
         _self->Join();
     }
+    _singleCommiter->shutdown().sync();
 }
 
 DomainInfo
@@ -391,9 +399,13 @@ Domain::commitIfStale(const vespalib::MonitorGuard & guard) {
 }
 
 void
-Domain::commitChunk(std::unique_ptr<Chunk> chunk, const vespalib::MonitorGuard & chunkOrderGuard)
-{
+Domain::commitChunk(std::unique_ptr<Chunk> chunk, const vespalib::MonitorGuard & chunkOrderGuard) {
     assert(chunkOrderGuard.monitors(_currentChunkMonitor));
+    _singleCommiter->execute(vespalib::makeLambdaTask([this, chunk = std::move(chunk)] () mutable { doCommit(std::move(chunk)); } ));
+}
+
+void
+Domain::doCommit(std::unique_ptr<Chunk> chunk) {
     const Packet & packet = chunk->getPacket();
     DomainPart::SP dp(_parts.rbegin()->second);
     vespalib::nbostream_longlivedbuf is(packet.getHandle().data(), packet.getHandle().size());

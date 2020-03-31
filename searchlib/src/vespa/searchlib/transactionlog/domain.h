@@ -123,6 +123,7 @@ private:
 
     std::unique_ptr<Chunk> grabCurrentChunk(const vespalib::MonitorGuard & guard);
     void commitChunk(std::unique_ptr<Chunk> chunk, const vespalib::MonitorGuard & chunkOrderGuard);
+    void doCommit(std::unique_ptr<Chunk> chunk);
     SerialNum begin(const vespalib::LockGuard & guard) const;
     SerialNum end(const vespalib::LockGuard & guard) const;
     size_t byteSize(const vespalib::LockGuard & guard) const;
@@ -143,6 +144,7 @@ private:
     std::unique_ptr<Chunk> _currentChunk;
     SerialNum              _lastSerial;
     FastOS_ThreadPool    & _threadPool;
+    std::unique_ptr<Executor> _singleCommiter;
     Executor             & _commitExecutor;
     Executor             & _sessionExecutor;
     std::atomic<int>       _sessionId;

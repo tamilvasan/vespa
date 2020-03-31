@@ -68,6 +68,16 @@ getDomainConfig(const searchlib::TranslogserverConfig & cfg) {
     return dcfg;
 }
 
+void
+logReconfig(const searchlib::TranslogserverConfig & cfg, const DomainConfig & dcfg) {
+    LOG(config, "configure Transaction Log Server %s at port %d\n"
+                "DomainConfig {encoding={%d, %d}, compression_level=%d, part_limit=%ld, chunk_limit=%ld age=%1.4f}",
+        cfg.servername.c_str(), cfg.listenport,
+        dcfg.getEncoding().getCrc(), dcfg.getEncoding().getCompression(), dcfg.getCompressionlevel(),
+        dcfg.getPartSizeLimit(), dcfg.getChunkSizeLimit(), vespalib::to_s(dcfg.getChunkAgeLimit())
+    );
+}
+
 }
 
 void
@@ -75,8 +85,10 @@ TransLogServerApp::start()
 {
     std::lock_guard<std::mutex> guard(_lock);
     auto c = _tlsConfig.get();
+    DomainConfig domainConfig = getDomainConfig(*c);
+    logReconfig(*c, domainConfig);
    _tls = std::make_shared<TransLogServer>(c->servername, c->listenport, c->basedir, _fileHeaderContext,
-                                            getDomainConfig(*c), c->maxthreads);
+                                            domainConfig, c->maxthreads);
 }
 
 TransLogServerApp::~TransLogServerApp()
@@ -87,13 +99,14 @@ TransLogServerApp::~TransLogServerApp()
 void
 TransLogServerApp::configure(std::unique_ptr<searchlib::TranslogserverConfig> cfg)
 {
-    LOG(config, "configure Transaction Log Server %s at port %d", cfg->servername.c_str(), cfg->listenport);
+
     std::lock_guard<std::mutex> guard(_lock);
-    DomainConfig domainConfig = getDomainConfig(*cfg);
+    DomainConfig dcfg = getDomainConfig(*cfg);
+    logReconfig(*cfg, dcfg);
     _tlsConfig.set(cfg.release());
     _tlsConfig.latch();
     if (_tls) {
-        _tls->setDomainConfig(domainConfig);
+        _tls->setDomainConfig(dcfg);
     }
 }
 

@@ -4,6 +4,7 @@
 #include "domainpart.h"
 #include "session.h"
 #include <vespa/vespalib/util/threadexecutor.h>
+#include <vespa/vespalib/util/time.h>
 #include <vespa/fastos/thread.h>
 #include <chrono>
 
@@ -11,24 +12,24 @@ namespace search::transactionlog {
 
 class DomainConfig {
 public:
-    using microseconds = std::chrono::microseconds;
+    using duration = vespalib::duration;
     DomainConfig();
     DomainConfig & setEncoding(Encoding v)          { _encoding = v; return *this; }
     DomainConfig & setPartSizeLimit(size_t v)       { _partSizeLimit = v; return *this; }
     DomainConfig & setChunkSizeLimit(size_t v)      { _chunkSizeLimit = v; return *this; }
-    DomainConfig & setChunkAgeLimit(microseconds v) { _chunkAgeLimit = v; return *this; }
+    DomainConfig & setChunkAgeLimit(vespalib::duration v) { _chunkAgeLimit = v; return *this; }
     DomainConfig & setCompressionLevel(uint8_t v)   { _compressionLevel = v; return *this; }
     Encoding          getEncoding() const { return _encoding; }
     size_t       getPartSizeLimit() const { return _partSizeLimit; }
     size_t      getChunkSizeLimit() const { return _chunkSizeLimit; }
-    microseconds getChunkAgeLimit() const { return _chunkAgeLimit; }
-    uint8_t getCompressionlevel() const { return _compressionLevel; }
+    duration     getChunkAgeLimit() const { return _chunkAgeLimit; }
+    uint8_t   getCompressionlevel() const { return _compressionLevel; }
 private:
     Encoding     _encoding;
     uint8_t      _compressionLevel;
     size_t       _partSizeLimit;
     size_t       _chunkSizeLimit;
-    microseconds _chunkAgeLimit;
+    duration     _chunkAgeLimit;
 };
 
 struct PartInfo {
@@ -113,11 +114,11 @@ private:
         void add(const Packet & packet, Writer::DoneCallback onDone);
         size_t sizeBytes() const { return _data.sizeBytes(); }
         const Packet & getPacket() const { return _data; }
-        std::chrono::microseconds age() const;
+        vespalib::duration age() const;
     private:
-        Packet _data;
-        std::vector<Writer::DoneCallback>     _callBacks;
-        std::chrono::steady_clock::time_point _firstArrivalTime;
+        Packet                             _data;
+        std::vector<Writer::DoneCallback>  _callBacks;
+        vespalib::steady_time              _firstArrivalTime;
     };
 
     std::unique_ptr<Chunk> grabCurrentChunk(const vespalib::MonitorGuard & guard);

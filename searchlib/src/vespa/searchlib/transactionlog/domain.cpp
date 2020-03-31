@@ -20,8 +20,6 @@ using vespalib::Monitor;
 using vespalib::MonitorGuard;
 using search::common::FileHeaderContext;
 using std::runtime_error;
-using namespace std::chrono_literals;
-using namespace std::chrono;
 using std::make_shared;
 
 namespace search::transactionlog {
@@ -93,7 +91,7 @@ Domain::Run(FastOS_ThreadInterface *thisThread, void *) {
 
     while (!thisThread->GetBreakFlag()) {
         vespalib::MonitorGuard guard(_currentChunkMonitor);
-        guard.wait(duration_cast<milliseconds>(_config.getChunkAgeLimit()).count());
+        guard.wait(_config.getChunkAgeLimit());
         commitIfStale(guard);
     }
 }
@@ -339,18 +337,18 @@ Domain::Chunk::~Chunk() = default;
 void
 Domain::Chunk::add(const Packet &packet, Writer::DoneCallback onDone) {
     if (_callBacks.empty()) {
-        _firstArrivalTime = steady_clock::now();
+        _firstArrivalTime = vespalib::steady_clock::now();
     }
     _data.merge(packet);
     _callBacks.emplace_back(std::move(onDone));
 }
 
-microseconds
+vespalib::duration
 Domain::Chunk::age() const {
     if (_callBacks.empty()) {
         return 0ms;
     }
-    return duration_cast<microseconds>(steady_clock::now() - _firstArrivalTime);
+    return (vespalib::steady_clock::now() - _firstArrivalTime);
 }
 
 void

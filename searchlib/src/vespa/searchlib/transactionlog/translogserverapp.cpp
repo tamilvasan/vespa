@@ -2,6 +2,7 @@
 
 #include "translogserverapp.h"
 #include <vespa/config/subscription/configuri.h>
+#include <vespa/vespalib/util/time.h>
 
 #include <vespa/log/log.h>
 LOG_SETUP(".translogserverapp");
@@ -63,7 +64,7 @@ getDomainConfig(const searchlib::TranslogserverConfig & cfg) {
         .setCompressionLevel(cfg.compression.level)
         .setPartSizeLimit(cfg.filesizemax)
         .setChunkSizeLimit(cfg.chunk.sizelimit)
-        .setChunkAgeLimit(std::chrono::microseconds(int64_t(cfg.chunk.agelimit*1000000)));
+        .setChunkAgeLimit(vespalib::from_s(cfg.chunk.agelimit));
     return dcfg;
 }
 

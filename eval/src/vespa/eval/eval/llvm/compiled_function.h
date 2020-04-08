@@ -63,7 +63,10 @@ public:
         return _llvm_wrapper.get_forests();
     }
     double estimate_cost_us(const std::vector<double> &params, double budget = 5.0) const;
-    static Function::Issues detect_issues(const Function &function);
+    static Function::Issues detect_issues(const nodes::Node &node);
+    static Function::Issues detect_issues(const Function &function) {
+        return detect_issues(function.root());
+    }
     static bool should_use_lazy_params(const Function &function);
 };
 

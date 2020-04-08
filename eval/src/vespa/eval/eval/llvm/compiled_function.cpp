@@ -120,7 +120,7 @@ CompiledFunction::estimate_cost_us(const std::vector<double> &params, double bud
 }
 
 Function::Issues
-CompiledFunction::detect_issues(const Function &function)
+CompiledFunction::detect_issues(const nodes::Node &node)
 {
     struct NotSupported : NodeTraverser {
         std::vector<vespalib::string> issues;
@@ -141,7 +141,7 @@ CompiledFunction::detect_issues(const Function &function)
             }
         }
     } checker;
-    function.root().traverse(checker);
+    node.traverse(checker);
     return Function::Issues(std::move(checker.issues));
 }
 
